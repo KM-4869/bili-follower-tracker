@@ -1,0 +1,109 @@
+# ============================================================
+# Personal data and login credentials
+# ============================================================
+
+# Follower snapshots and reports created by the application.
+.local-data/
+local-data/
+localdata/
+
+# Local environment variables and secrets. Keep an example file if one is
+# added later, but never commit the real values.
+.env
+.env.*
+!.env.example
+.flaskenv
+.secrets/
+secrets.*
+
+# Common filenames for exported browser credentials or account data.
+cookies.txt
+cookies.json
+*sessdata*
+*SESSDATA*
+
+# Accidentally exported runtime data in the repository root.
+/snapshot-*.json
+/report-*.json
+/followers*.json
+
+# Private keys and signing certificates must not enter source control.
+*.key
+*.pem
+*.p12
+*.pfx
+
+# ============================================================
+# Python environments, caches and test output
+# ============================================================
+
+.venv/
+.venv-*/
+venv/
+env/
+ENV/
+
+__pycache__/
+*.py[cod]
+*$py.class
+
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+.tox/
+.nox/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+# ============================================================
+# Build and release artifacts
+# ============================================================
+
+# Keep BiliFollowerTracker.spec, build_portable.ps1 and version metadata in
+# Git. Generated folders and ZIP files belong on the GitHub Releases page.
+build/
+dist/
+release/
+*.egg-info/
+*.egg
+pip-wheel-metadata/
+
+# Optional frontend dependencies, if tooling is added later.
+node_modules/
+
+# ============================================================
+# Runtime, logs and temporary files
+# ============================================================
+
+instance/
+*.log
+*.pid
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+~$*
+
+# ============================================================
+# Editors, operating systems and local AI tooling
+# ============================================================
+
+.vscode/
+.idea/
+.vs/
+*.code-workspace
+
+.codex/
+.agents/
+
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+readmefigures/
