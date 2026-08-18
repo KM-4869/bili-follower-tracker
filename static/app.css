@@ -120,6 +120,14 @@ label { display: block; margin: 18px 0 8px; color: #39445a; font-size: 13px; fon
 .lock { margin-left: 17px; color: var(--green); font-size: 9px; box-shadow: 0 0 0 4px rgba(23,166,115,.10); border-radius: 50%; }
 .field-help { margin: 8px 2px 0; color: #8991a1; font-size: 11px; line-height: 1.55; }
 
+.account-card { display: flex; align-items: center; gap: 12px; margin-top: 14px; padding: 12px; border: 1px solid #dceee7; border-radius: 13px; background: var(--green-soft); }
+.account-avatar { display: grid; place-items: center; flex: 0 0 42px; width: 42px; height: 42px; overflow: hidden; border-radius: 50%; color: #087c55; background: #d5f2e7; font-size: 15px; font-weight: 850; }
+.account-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.account-copy { display: grid; min-width: 0; gap: 2px; }
+.account-copy small { color: #538171; font-size: 10px; font-weight: 700; }
+.account-copy strong { overflow: hidden; color: #275c4a; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+.account-copy span { color: #6b8b80; font-size: 10px; }
+
 .advanced { margin: 20px 0 22px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 12px 2px; }
 .advanced summary { cursor: pointer; color: #586377; font-size: 13px; font-weight: 700; }
 .advanced label { margin-top: 14px; }

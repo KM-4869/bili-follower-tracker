@@ -32,6 +32,7 @@ SCHEMA_VERSION = 1
 DEFAULT_STORE = Path(".local-data") / "snapshots"
 DEFAULT_BILIBILI_ROOT = Path(".local-data") / "bilibili"
 BILIBILI_FOLLOWERS_URL = "https://api.bilibili.com/x/relation/followers"
+BILIBILI_NAV_URL = "https://api.bilibili.com/x/web-interface/nav"
 BILIBILI_VISIBLE_LIMIT = 1000
 
 
@@ -304,7 +305,7 @@ def fetch_api_records(args: argparse.Namespace) -> ApiResult:
     validate_official_url(args.url)
     headers = {
         "Accept": "application/json",
-        "User-Agent": "bili-follower-tracker/0.2",
+        "User-Agent": "bili-follower-tracker/0.3",
     }
     if args.token_env:
         token = os.environ.get(args.token_env)
@@ -417,6 +418,60 @@ def bilibili_api_error(payload: Any) -> None:
     hint = hints.get(numeric_code)
     suffix = f"；{hint}" if hint else ""
     raise TrackerError(f"粉丝接口错误 code={code}：{message}{suffix}")
+
+
+def fetch_bilibili_account(
+    sessdata: str,
+    timeout: float = 15.0,
+    requester: JsonRequester = request_json,
+) -> dict[str, str]:
+    """Validate SESSDATA and return the minimal signed-in account profile."""
+    sessdata = normalize_sessdata(sessdata)
+    headers = {
+        "Accept": "application/json, text/plain, */*",
+        "Accept-Language": "zh-CN,zh;q=0.9",
+        "Cookie": f"SESSDATA={sessdata}",
+        "Referer": "https://www.bilibili.com/",
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/140.0.0.0 Safari/537.36"
+        ),
+    }
+    payload = requester(BILIBILI_NAV_URL, headers, timeout)
+    if not isinstance(payload, dict):
+        raise TrackerError("登录信息接口响应不是 JSON 对象")
+
+    code = payload.get("code")
+    try:
+        numeric_code = int(code)
+    except (TypeError, ValueError):
+        numeric_code = None
+    if numeric_code != 0:
+        message = payload.get("message") or payload.get("msg") or "未知错误"
+        hint = "；登录状态无效或 SESSDATA 已过期" if numeric_code == -101 else ""
+        raise TrackerError(f"登录验证失败 code={code}：{message}{hint}")
+
+    data = payload.get("data")
+    if not isinstance(data, dict) or data.get("isLogin") is not True:
+        raise TrackerError("登录验证失败：SESSDATA 无效或已过期")
+
+    raw_uid = data.get("mid")
+    uid = "" if raw_uid is None else str(raw_uid).strip()
+    if not uid.isdigit() or int(uid) <= 0:
+        raise TrackerError("登录信息中缺少有效的账号 UID")
+
+    raw_name = data.get("uname")
+    name = "" if raw_name is None else str(raw_name).strip()
+    raw_face = data.get("face")
+    face = "" if raw_face is None else str(raw_face).strip()
+    if face:
+        parsed_face = urllib.parse.urlparse(face)
+        face_host = (parsed_face.hostname or "").lower()
+        if parsed_face.scheme != "https" or not face_host.endswith(".hdslb.com"):
+            face = ""
+
+    return {"uid": uid, "name": name, "face": face}
 
 
 def fetch_bilibili_records(

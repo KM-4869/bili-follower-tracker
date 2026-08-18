@@ -13,6 +13,7 @@ from follower_tracker import (
     TrackerError,
     build_parser,
     compare_documents,
+    fetch_bilibili_account,
     fetch_bilibili_records,
     find_ca_bundle,
     load_file_records,
@@ -203,6 +204,47 @@ class FollowerTrackerTests(unittest.TestCase):
             ],
         )
         self.assertTrue(warnings)
+
+    def test_sessdata_identifies_signed_in_account(self):
+        requests = []
+
+        def fake_requester(url, headers, timeout):
+            requests.append((url, headers, timeout))
+            return {
+                "code": 0,
+                "data": {
+                    "isLogin": True,
+                    "mid": 12345,
+                    "uname": "测试UP主",
+                    "face": "https://i0.hdslb.com/bfs/face/avatar.jpg",
+                },
+            }
+
+        account = fetch_bilibili_account(
+            "SESSDATA=private-secret", requester=fake_requester
+        )
+
+        self.assertEqual(
+            account,
+            {
+                "uid": "12345",
+                "name": "测试UP主",
+                "face": "https://i0.hdslb.com/bfs/face/avatar.jpg",
+            },
+        )
+        self.assertEqual(requests[0][1]["Cookie"], "SESSDATA=private-secret")
+        self.assertNotIn("private-secret", requests[0][0])
+
+    def test_invalid_sessdata_cannot_identify_account(self):
+        def fake_requester(url, headers, timeout):
+            return {
+                "code": -101,
+                "message": "账号未登录",
+                "data": {"isLogin": False},
+            }
+
+        with self.assertRaisesRegex(TrackerError, "SESSDATA 已过期"):
+            fetch_bilibili_account("expired", requester=fake_requester)
 
     def test_bilibili_fetch_marks_visible_limit_as_incomplete(self):
         def fake_requester(url, headers, timeout):

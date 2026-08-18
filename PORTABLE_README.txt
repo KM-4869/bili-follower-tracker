@@ -1,4 +1,4 @@
-Bili Follower Tracker 0.2.0（B站粉丝变动助手 · Windows x64 便携版）
+Bili Follower Tracker 0.3.0（B站粉丝变动助手 · Windows x64 便携版）
 ================================================
 
 使用方法
@@ -6,7 +6,8 @@ Bili Follower Tracker 0.2.0（B站粉丝变动助手 · Windows x64 便携版）
 1. 请先完整解压 ZIP，不要直接在压缩包内运行。
 2. 双击 BiliFollowerTracker.exe。
 3. 程序会打开一个终端窗口，并自动在默认浏览器打开本地页面。
-4. 关闭终端窗口即可停止程序。
+4. 只输入 SESSDATA，点击“登录并检查粉丝变化”；程序会自动识别 UID、昵称和头像。
+5. 关闭终端窗口即可停止程序。
 
 本程序不安装 Python，不写入系统目录，也不创建系统服务。
 

@@ -26,15 +26,9 @@
         <article class="setup-card panel">
           <div class="eyebrow">开始一次安全检查</div>
           <h1>看看粉丝列表里<br><em>发生了什么变化</em></h1>
-          <p class="intro">输入 UP 主 UID 和本次登录凭证。程序会在本机生成快照，只保留必要的关系信息。</p>
+          <p class="intro">输入本次登录凭证，程序会自动识别你的账号，并在本机生成粉丝快照。</p>
 
           <form id="check-form" novalidate>
-            <label for="uid">UP 主 UID</label>
-            <div class="input-wrap">
-              <span class="input-prefix">UID</span>
-              <input id="uid" name="uid" inputmode="numeric" pattern="[0-9]+" autocomplete="off" placeholder="例如 12345678" required>
-            </div>
-
             <div class="label-row">
               <label for="sessdata">SESSDATA</label>
               <button class="text-button" id="toggle-secret" type="button" aria-controls="sessdata">显示</button>
@@ -43,7 +37,19 @@
               <span class="lock" aria-hidden="true">●</span>
               <input id="sessdata" name="sessdata" type="password" autocomplete="off" placeholder="只粘贴 Value，不要粘贴整段 Cookie" required>
             </div>
-            <p class="field-help">提交后立即清空输入框，不保存到浏览器或快照。</p>
+            <p class="field-help">登录成功后会自动读取 UID、昵称和头像。提交后立即清空输入框，不保存到浏览器或快照。</p>
+
+            <div class="account-card hidden" id="account-card" aria-live="polite">
+              <div class="account-avatar">
+                <img id="account-face" alt="" hidden>
+                <span id="account-fallback" aria-hidden="true">?</span>
+              </div>
+              <div class="account-copy">
+                <small>当前识别账号</small>
+                <strong id="account-name">尚未登录</strong>
+                <span id="account-uid">UID —</span>
+              </div>
+            </div>
 
             <details class="advanced">
               <summary>检查设置</summary>
@@ -55,7 +61,7 @@
             </details>
 
             <button class="primary-button" id="submit-button" type="submit">
-              <span>开始检查粉丝变化</span><b aria-hidden="true">→</b>
+              <span>登录并检查粉丝变化</span><b aria-hidden="true">→</b>
             </button>
           </form>
         </article>
@@ -115,7 +121,7 @@
       <section class="history-section panel">
         <div class="section-heading">
           <div><span class="eyebrow">网页显示 · 最新 99 条</span><h2>检查历史</h2></div>
-          <button class="danger-button" id="clear-data" type="button" disabled>清除当前 UID 数据</button>
+          <button class="danger-button" id="clear-data" type="button" disabled>清除当前账号数据</button>
         </div>
         <div class="history-list" id="history-list">
           <div class="history-empty">未建立基线。首次检查会建立基线，第二次可比较检查后才会生成变化记录。</div>

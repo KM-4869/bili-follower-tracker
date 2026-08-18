@@ -18,6 +18,11 @@ class WebAppTests(unittest.TestCase):
         self.app.config["TESTING"] = True
         self.client = self.app.test_client()
         self.token = self.app.config["APP_TOKEN"]
+        self.account = {
+            "uid": "12345",
+            "name": "测试UP主",
+            "face": "https://i0.hdslb.com/bfs/face/avatar.jpg",
+        }
 
     def tearDown(self):
         self.app.extensions["task_manager"].executor.shutdown(wait=True)
@@ -35,14 +40,15 @@ class WebAppTests(unittest.TestCase):
             time.sleep(0.01)
         self.fail("task did not finish")
 
-    def submit(self, uid="12345"):
-        response = self.client.post(
-            "/api/check",
-            json={"uid": uid, "sessdata": "private-secret", "delay": 0.5},
-            headers=self.headers(),
-        )
-        self.assertEqual(response.status_code, 202)
-        return self.wait_for_task(response.get_json()["task_id"])
+    def submit(self):
+        with patch("web_app.fetch_bilibili_account", return_value=self.account):
+            response = self.client.post(
+                "/api/check",
+                json={"sessdata": "private-secret", "delay": 0.5},
+                headers=self.headers(),
+            )
+            self.assertEqual(response.status_code, 202)
+            return self.wait_for_task(response.get_json()["task_id"])
 
     def test_index_and_security_headers(self):
         response = self.client.get("/")
@@ -64,7 +70,7 @@ class WebAppTests(unittest.TestCase):
 
     def test_mutation_requires_local_token(self):
         response = self.client.post(
-            "/api/check", json={"uid": "12345", "sessdata": "secret"}
+            "/api/check", json={"sessdata": "secret"}
         )
         self.assertEqual(response.status_code, 403)
 
@@ -94,6 +100,8 @@ class WebAppTests(unittest.TestCase):
             second = self.submit()
 
         self.assertEqual(first["status"], "done")
+        self.assertEqual(first["uid"], "12345")
+        self.assertEqual(first["account"], self.account)
         self.assertTrue(first["result"]["baseline"])
         first_history = self.client.get("/api/history/12345").get_json()
         self.assertTrue(first_history["baseline_established"])
@@ -179,10 +187,13 @@ class WebAppTests(unittest.TestCase):
                 )
                 time.sleep(0.005)
 
-        with patch("web_app.fetch_bilibili_records", side_effect=slow_fetch):
+        with (
+            patch("web_app.fetch_bilibili_account", return_value=self.account),
+            patch("web_app.fetch_bilibili_records", side_effect=slow_fetch),
+        ):
             response = self.client.post(
                 "/api/check",
-                json={"uid": "12345", "sessdata": "private-secret", "delay": 0.5},
+                json={"sessdata": "private-secret", "delay": 0.5},
                 headers=self.headers(),
             )
             task_id = response.get_json()["task_id"]

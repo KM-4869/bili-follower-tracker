@@ -2,7 +2,6 @@
 
 const appToken = document.querySelector('meta[name="app-token"]').content;
 const form = document.getElementById("check-form");
-const uidInput = document.getElementById("uid");
 const secretInput = document.getElementById("sessdata");
 const submitButton = document.getElementById("submit-button");
 const toggleSecret = document.getElementById("toggle-secret");
@@ -18,17 +17,23 @@ const resultList = document.getElementById("result-list");
 const resultNotice = document.getElementById("result-notice");
 const historyList = document.getElementById("history-list");
 const clearDataButton = document.getElementById("clear-data");
+const accountCard = document.getElementById("account-card");
+const accountFace = document.getElementById("account-face");
+const accountFallback = document.getElementById("account-fallback");
+const accountName = document.getElementById("account-name");
+const accountUid = document.getElementById("account-uid");
 const toast = document.getElementById("toast");
 
 let currentTaskId = null;
 let checkState = "idle";
-let currentUid = localStorage.getItem("lastFollowerUid") || "";
+let currentAccount = readStoredAccount();
+let currentUid = currentAccount?.uid || localStorage.getItem("lastFollowerUid") || "";
 let currentDiff = null;
 let activeTab = "removed";
 let toastTimer = null;
 
 if (currentUid) {
-  uidInput.value = currentUid;
+  showAccount(currentAccount || { uid: currentUid, name: "上次检查账号", face: "" }, false);
   clearDataButton.disabled = false;
   loadHistory(currentUid);
 }
@@ -62,13 +67,7 @@ form.addEventListener("submit", async (event) => {
   }
   if (checkState !== "idle") return;
 
-  const uid = uidInput.value.trim();
   const sessdata = secretInput.value.trim();
-  if (!/^\d+$/.test(uid) || Number(uid) <= 0) {
-    showToast("请输入正确的数字 UID", true);
-    uidInput.focus();
-    return;
-  }
   if (!sessdata) {
     showToast("请输入 SESSDATA", true);
     secretInput.focus();
@@ -81,14 +80,11 @@ form.addEventListener("submit", async (event) => {
   try {
     const response = await apiFetch("/api/check", {
       method: "POST",
-      body: JSON.stringify({ uid, sessdata, delay: Number(delayInput.value) }),
+      body: JSON.stringify({ sessdata, delay: Number(delayInput.value) }),
     });
     secretInput.value = "";
     secretInput.type = "password";
     toggleSecret.textContent = "显示";
-    currentUid = uid;
-    localStorage.setItem("lastFollowerUid", uid);
-    clearDataButton.disabled = false;
     currentTaskId = response.task_id;
     setCheckState("running");
     await pollTask(response.task_id);
@@ -117,20 +113,22 @@ async function cancelCurrentTask() {
 clearDataButton.addEventListener("click", async () => {
   if (!currentUid) return;
   const confirmed = window.confirm(
-    `确定删除 UID ${currentUid} 的全部本地快照和报告吗？此操作无法撤销。`
+    `确定删除 ${currentAccount?.name || `UID ${currentUid}`} 的全部本地快照和报告吗？此操作无法撤销。`
   );
   if (!confirmed) return;
   try {
     await apiFetch(`/api/data/${encodeURIComponent(currentUid)}`, { method: "DELETE" });
     localStorage.removeItem("lastFollowerUid");
-    uidInput.value = "";
+    localStorage.removeItem("lastFollowerAccount");
+    currentAccount = null;
     currentUid = "";
+    accountCard.classList.add("hidden");
     currentDiff = null;
     clearDataButton.disabled = true;
     resetResults();
     historyList.innerHTML = '<div class="history-empty">本地记录已清除，当前未建立基线。首次检查会建立新的基线。</div>';
-    setStatus("准备就绪", "可以输入 UID 开始建立新的粉丝快照。", "ready");
-    showToast("当前 UID 的本地数据已清除");
+    setStatus("准备就绪", "可以输入 SESSDATA 登录并建立新的粉丝快照。", "ready");
+    showToast("当前账号的本地数据已清除");
   } catch (error) {
     showToast(error.message, true);
   }
@@ -140,6 +138,7 @@ async function pollTask(taskId) {
   if (taskId !== currentTaskId) return;
   try {
     const task = await apiFetch(`/api/tasks/${taskId}`);
+    if (task.account) showAccount(task.account);
     const progress = task.progress || {};
     updateProgress(progress);
 
@@ -173,6 +172,7 @@ function updateProgress(progress) {
   const phaseTitles = {
     queued: "任务排队中",
     connecting: "验证登录状态",
+    identified: "账号识别成功",
     fetching: "读取粉丝列表",
     validating: "校验名单完整性",
     comparing: "比较两次快照",
@@ -383,18 +383,60 @@ function setCheckState(state) {
   submitButton.disabled = state === "starting" || state === "cancelling";
   submitButton.classList.toggle("cancel", state === "running" || state === "cancelling");
   submitButton.querySelector("span").textContent = {
-    idle: "开始检查粉丝变化",
+    idle: "登录并检查粉丝变化",
     starting: "正在启动检查",
     running: "中止本次检查",
     cancelling: "正在中止检查",
   }[state];
   submitButton.querySelector("b").textContent = cancellable ? "×" : "→";
-  submitButton.setAttribute("aria-label", cancellable ? "中止本次检查" : "开始检查粉丝变化");
-  uidInput.disabled = busy;
+  submitButton.setAttribute("aria-label", cancellable ? "中止本次检查" : "登录并检查粉丝变化");
   secretInput.disabled = busy;
   toggleSecret.disabled = busy;
   delayInput.disabled = busy;
   clearDataButton.disabled = busy || !currentUid;
+}
+
+function readStoredAccount() {
+  try {
+    const value = JSON.parse(localStorage.getItem("lastFollowerAccount") || "null");
+    return value && /^\d+$/.test(String(value.uid || "")) ? value : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function showAccount(account, persist = true) {
+  const uid = String(account.uid || "");
+  if (!/^\d+$/.test(uid)) return;
+  const name = String(account.name || "未命名用户");
+  const face = String(account.face || "");
+  currentAccount = { uid, name, face };
+  currentUid = uid;
+  accountName.textContent = name;
+  accountUid.textContent = `UID ${uid}`;
+  accountFallback.textContent = name.trim().slice(0, 1) || "?";
+  accountFace.hidden = true;
+  accountFace.removeAttribute("src");
+  if (face) {
+    accountFace.onload = () => {
+      accountFace.hidden = false;
+      accountFallback.hidden = true;
+    };
+    accountFace.onerror = () => {
+      accountFace.hidden = true;
+      accountFallback.hidden = false;
+    };
+    accountFallback.hidden = false;
+    accountFace.src = face;
+  } else {
+    accountFallback.hidden = false;
+  }
+  accountCard.classList.remove("hidden");
+  clearDataButton.disabled = checkState !== "idle";
+  if (persist) {
+    localStorage.setItem("lastFollowerUid", uid);
+    localStorage.setItem("lastFollowerAccount", JSON.stringify(currentAccount));
+  }
 }
 
 function showNotice(message, isError) {

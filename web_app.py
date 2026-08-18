@@ -24,6 +24,7 @@ from follower_tracker import (
     DEFAULT_BILIBILI_ROOT,
     TrackerError,
     compare_documents,
+    fetch_bilibili_account,
     fetch_bilibili_records,
     is_comparison_basis,
     load_snapshot,
@@ -96,11 +97,12 @@ class TaskManager:
                 for task in self.tasks.values()
             )
 
-    def submit(self, uid: str, sessdata: str, delay: float) -> str:
+    def submit(self, sessdata: str, delay: float) -> str:
         task_id = uuid.uuid4().hex
         task = {
             "id": task_id,
-            "uid": uid,
+            "uid": None,
+            "account": None,
             "status": "queued",
             "created_at": utc_iso(),
             "progress": {
@@ -124,7 +126,7 @@ class TaskManager:
                 ]
                 for key in finished[: len(self.tasks) - MAX_HISTORY]:
                     self.tasks.pop(key, None)
-        self.executor.submit(self._run, task_id, uid, sessdata, delay)
+        self.executor.submit(self._run, task_id, sessdata, delay)
         return task_id
 
     def get(self, task_id: str) -> dict[str, Any] | None:
@@ -185,7 +187,7 @@ class TaskManager:
         if report_name:
             (uid_root / "reports" / Path(report_name).name).unlink(missing_ok=True)
 
-    def _run(self, task_id: str, uid: str, sessdata: str, delay: float) -> None:
+    def _run(self, task_id: str, sessdata: str, delay: float) -> None:
         with self.lock:
             if self.tasks[task_id]["cancel_requested"]:
                 self.tasks[task_id]["status"] = "cancelled"
@@ -199,7 +201,22 @@ class TaskManager:
                 "total": None,
             }
 
+        uid = ""
+        result: dict[str, Any] | None = None
         try:
+            account = fetch_bilibili_account(sessdata, timeout=20.0)
+            uid = account["uid"]
+            self._raise_if_cancelled(task_id)
+            with self.lock:
+                self.tasks[task_id]["uid"] = uid
+                self.tasks[task_id]["account"] = account
+                self.tasks[task_id]["progress"] = {
+                    "phase": "identified",
+                    "message": f"已登录为 {account['name'] or '未命名用户'}（UID {uid}）",
+                    "page": 0,
+                    "collected": 0,
+                    "total": None,
+                }
             result = self._capture_and_compare(
                 uid,
                 sessdata,
@@ -219,7 +236,7 @@ class TaskManager:
                         "collected": result["current_count"],
                         "total": result["expected_total"],
                     }
-            if cancelled:
+            if cancelled and result is not None:
                 self._rollback_result(uid, result)
                 self._mark_cancelled(task_id)
         except TaskCancelled:
@@ -393,7 +410,7 @@ def create_app(data_root: Path | None = None) -> Flask:
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["Referrer-Policy"] = "no-referrer"
         response.headers["Content-Security-Policy"] = (
-            "default-src 'self'; connect-src 'self'; img-src 'self' data:; "
+            "default-src 'self'; connect-src 'self'; img-src 'self' data: https://*.hdslb.com; "
             "style-src 'self'; script-src 'self'; base-uri 'none'; "
             "frame-ancestors 'none'; form-action 'self'"
         )
@@ -414,21 +431,18 @@ def create_app(data_root: Path | None = None) -> Flask:
     @app.post("/api/check")
     def start_check() -> Any:
         payload = request.get_json(silent=True) or {}
-        uid = str(payload.get("uid", "")).strip()
         sessdata = str(payload.get("sessdata", "")).strip()
         try:
             delay = float(payload.get("delay", 1.0))
         except (TypeError, ValueError):
             abort(400, description="请求间隔必须是数字")
-        if not valid_uid(uid):
-            abort(400, description="UID 必须是正整数")
         if not sessdata:
             abort(400, description="请输入 SESSDATA")
         if not 0.5 <= delay <= 5.0:
             abort(400, description="请求间隔必须在 0.5 到 5 秒之间")
         if manager.has_active_task():
             abort(409, description="已有检查正在运行，请等待完成")
-        task_id = manager.submit(uid, sessdata, delay)
+        task_id = manager.submit(sessdata, delay)
         return jsonify({"task_id": task_id}), 202
 
     @app.get("/api/tasks/<task_id>")
