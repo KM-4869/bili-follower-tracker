@@ -21,6 +21,11 @@ cookies.txt
 cookies.json
 *sessdata*
 *SESSDATA*
+accesskey*.txt
+accesskey*.json
+access_key*.txt
+access_key*.json
+app-key.txt
 
 # Accidentally exported runtime data in the repository root.
 /snapshot-*.json
@@ -106,4 +111,16 @@ ehthumbs.db
 Desktop.ini
 $RECYCLE.BIN/
 
-readmefigures/
+# ============================================================
+# Local reference scripts and scratch assets
+# ============================================================
+
+/bili_fans_raw*.py
+
+# Local-only UI demo. The automated tests in tests/ remain publishable.
+/demo_count_mismatch.py
+
+# Scratch images only; do not ignore the published README images in image/.
+/readmefigures/
+
+

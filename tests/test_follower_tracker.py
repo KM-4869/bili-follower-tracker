@@ -372,6 +372,22 @@ class FollowerTrackerTests(unittest.TestCase):
             ):
                 self.assertEqual(find_ca_bundle(), ca_bundle)
 
+    def test_msys_ca_bundle_uses_base_prefix_from_virtual_environment(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            prefix = root / "project" / ".venv"
+            base_prefix = root / "msys64" / "ucrt64"
+            ca_bundle = base_prefix.parent / "usr" / "ssl" / "certs" / "ca-bundle.crt"
+            ca_bundle.parent.mkdir(parents=True)
+            ca_bundle.touch()
+            with (
+                patch("follower_tracker.sys.prefix", str(prefix)),
+                patch("follower_tracker.sys.base_prefix", str(base_prefix)),
+                patch("follower_tracker.sys.executable", str(prefix / "bin" / "python.exe")),
+                patch("follower_tracker.ssl.get_default_verify_paths", return_value=types.SimpleNamespace(cafile=None)),
+            ):
+                self.assertEqual(find_ca_bundle(), ca_bundle)
+
     def test_check_bilibili_builds_baseline_then_report_without_storing_secret(self):
         before = ApiResult(
             records=[{"uid": "1", "name": "甲"}, {"uid": "2", "name": "乙"}],

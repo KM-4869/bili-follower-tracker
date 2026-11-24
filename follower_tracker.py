@@ -254,6 +254,9 @@ def find_ca_bundle() -> Path | None:
     candidates = [
         Path(sys.prefix).parent / "usr" / "ssl" / "cert.pem",
         Path(sys.prefix).parent / "usr" / "ssl" / "certs" / "ca-bundle.crt",
+        # In an MSYS2 venv, sys.prefix points to the project, not the runtime.
+        Path(sys.base_prefix).parent / "usr" / "ssl" / "cert.pem",
+        Path(sys.base_prefix).parent / "usr" / "ssl" / "certs" / "ca-bundle.crt",
     ]
     if len(executable.parents) >= 3:
         msys_root = executable.parents[2]
@@ -803,23 +806,28 @@ def record_is_inside_snapshot_boundary(
 
 
 def compare_documents(
-    previous: dict[str, Any], current: dict[str, Any], allow_incomplete: bool = False
+    previous: dict[str, Any], current: dict[str, Any], allow_incomplete: bool = False,
+    *, legacy_window: bool = False,
 ) -> dict[str, Any]:
     full_comparison = bool(previous.get("complete") and current.get("complete"))
+    legacy_window = bool(legacy_window and not previous.get("complete") and current.get("complete"))
     bounded_comparison = bool(
         not full_comparison
         and is_comparison_basis(previous)
         and is_comparison_basis(current)
     )
-    apply_time_boundary = bounded_comparison and not allow_incomplete
-    if not allow_incomplete and not full_comparison and not bounded_comparison:
+    apply_time_boundary = bounded_comparison and not allow_incomplete and not legacy_window
+    if not allow_incomplete and not full_comparison and not bounded_comparison and not legacy_window:
         raise TrackerError("快照不完整且没有经过验证的时间边界，已拒绝比较")
 
     old = {str(item["uid"]): item for item in previous["records"]}
     new = {str(item["uid"]): item for item in current["records"]}
     raw_removed_ids = old.keys() - new.keys()
     raw_added_ids = new.keys() - old.keys()
-    if apply_time_boundary:
+    if legacy_window:
+        removed_ids = sorted(raw_removed_ids)
+        added_ids = []
+    elif apply_time_boundary:
         removed_ids = sorted(
             uid
             for uid in raw_removed_ids
@@ -836,22 +844,24 @@ def compare_documents(
     shared_ids = old.keys() & new.keys()
     renamed = []
     for uid in sorted(shared_ids):
-        if old[uid].get("name", "") == new[uid].get("name", ""):
+        if not old[uid].get("name") or not new[uid].get("name") or old[uid]["name"] == new[uid]["name"]:
             continue
         item = {
             "uid": uid,
             "before": old[uid].get("name", ""),
             "after": new[uid].get("name", ""),
         }
-        for key in ("followed_at", "mutual"):
+        for key in ("followed_at", "mutual", "relationship"):
             if key in new[uid]:
                 item[key] = new[uid][key]
         renamed.append(item)
 
     warnings: list[str] = []
     removal_ratio = len(removed_ids) / max(len(old), 1)
-    confidence = "bounded" if apply_time_boundary else "normal"
-    if allow_incomplete and (not previous.get("complete") or not current.get("complete")):
+    confidence = "bounded" if apply_time_boundary or legacy_window else "normal"
+    if legacy_window:
+        warnings.append("旧基线覆盖有限，本次不统计新增；已保存完整名单作为后续基线")
+    elif allow_incomplete and (not previous.get("complete") or not current.get("complete")):
         confidence = "low"
         warnings.append("至少一个快照不完整，结果仅供调试")
     elif apply_time_boundary:
@@ -877,8 +887,7 @@ def compare_documents(
     return {
         "kind": "snapshot_diff",
         "comparison_mode": (
-            "time_boundary"
-            if apply_time_boundary
+            "legacy_window" if legacy_window else "time_boundary" if apply_time_boundary
             else "debug_incomplete" if allow_incomplete and not full_comparison else "full"
         ),
         "previous_captured_at": previous.get("captured_at"),
