@@ -127,6 +127,7 @@ label { display: block; margin: 18px 0 8px; color: #39445a; font-size: 13px; fon
 .account-copy small { color: #538171; font-size: 10px; font-weight: 700; }
 .account-copy strong { overflow: hidden; color: #275c4a; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
 .account-copy span { color: #6b8b80; font-size: 10px; }
+#switch-account { margin-left: auto; flex-shrink: 0; }
 
 .advanced { margin: 20px 0 22px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 12px 2px; }
 .advanced summary { cursor: pointer; color: #586377; font-size: 13px; font-weight: 700; }
@@ -199,6 +200,8 @@ label { display: block; margin: 18px 0 8px; color: #39445a; font-size: 13px; fon
 .stat-card { position: relative; overflow: hidden; min-height: 126px; background: #fff; border: 1px solid var(--line); border-radius: 18px; padding: 20px 19px; box-shadow: 0 9px 25px rgba(33,43,68,.05); }
 .stat-card::after { content: ""; position: absolute; width: 64px; height: 64px; right: -31px; top: -31px; border: 12px solid currentColor; border-radius: 50%; opacity: .08; }
 .stat-card span { display: block; color: #737d90; font-size: 12px; font-weight: 700; }
+.stat-card .stat-count-note:not([hidden]) { display: inline-block; font-weight: 400; }
+.stat-card .stat-count-note[hidden] { display: none; }
 .stat-card strong { display: block; margin: 8px 0 3px; color: var(--ink); font-size: 29px; line-height: 1; letter-spacing: -.04em; }
 .stat-card small { color: #9ba2af; font-size: 10px; }
 .stat-card.current { color: var(--blue); }
@@ -217,6 +220,12 @@ label { display: block; margin: 18px 0 8px; color: #39445a; font-size: 13px; fon
 .notice.error { color: #b33861; background: var(--pink-soft); }
 .hidden { display: none !important; }
 .result-list { padding: 10px 20px 20px; }
+.scan-panel { width: fit-content; max-width: 100%; margin: 0 auto 16px; text-align: center; }
+.scan-panel img { display: block; width: min(220px, 100%); height: auto; margin: auto; background: #fff; }
+.scan-panel p { margin: 8px 0 0; font-size: 13px; }
+.result-tools { display: grid; gap: 10px; padding: 0 20px 18px; }
+.result-pagination { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.result-pagination span { font-size: 13px; }
 .empty-state { min-height: 245px; display: grid; place-items: center; align-content: center; text-align: center; color: #848d9e; }
 .empty-state strong { margin-top: 15px; color: #4b566b; font-size: 14px; }
 .empty-state p { max-width: 330px; margin: 7px 0 0; font-size: 12px; line-height: 1.6; }

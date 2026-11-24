@@ -26,18 +26,13 @@
         <article class="setup-card panel">
           <div class="eyebrow">开始一次安全检查</div>
           <h1>看看粉丝列表里<br><em>发生了什么变化</em></h1>
-          <p class="intro">输入本次登录凭证，程序会自动识别你的账号，并在本机生成粉丝快照。</p>
+          <p class="intro">首次使用手机 B 站 App 扫码确认。本次程序运行期间可直接再次检查，关闭程序后需重新扫码。</p>
 
           <form id="check-form" novalidate>
-            <div class="label-row">
-              <label for="sessdata">SESSDATA</label>
-              <button class="text-button" id="toggle-secret" type="button" aria-controls="sessdata">显示</button>
+            <div class="scan-panel hidden" id="scan-panel" aria-live="polite">
+              <img id="scan-code" alt="B 站登录二维码">
+              <p id="scan-message">请用 B 站 App 扫码并确认</p>
             </div>
-            <div class="input-wrap secret-wrap">
-              <span class="lock" aria-hidden="true">●</span>
-              <input id="sessdata" name="sessdata" type="password" autocomplete="off" placeholder="只粘贴 Value，不要粘贴整段 Cookie" required>
-            </div>
-            <p class="field-help">登录成功后会自动读取 UID、昵称和头像。提交后立即清空输入框，不保存到浏览器或快照。</p>
 
             <div class="account-card hidden" id="account-card" aria-live="polite">
               <div class="account-avatar">
@@ -45,10 +40,11 @@
                 <span id="account-fallback" aria-hidden="true">?</span>
               </div>
               <div class="account-copy">
-                <small>当前识别账号</small>
+                <small id="account-session-label">上次检查账号</small>
                 <strong id="account-name">尚未登录</strong>
                 <span id="account-uid">UID —</span>
               </div>
+              <button class="text-button hidden" id="switch-account" type="button">切换账号</button>
             </div>
 
             <details class="advanced">
@@ -61,7 +57,7 @@
             </details>
 
             <button class="primary-button" id="submit-button" type="submit">
-              <span>登录并检查粉丝变化</span><b aria-hidden="true">→</b>
+              <span>扫码并检查粉丝变化</span><b aria-hidden="true">→</b>
             </button>
           </form>
         </article>
@@ -87,10 +83,10 @@
 
           <section class="stats-grid" aria-label="粉丝变化统计">
             <article class="stat-card current">
-              <span>当前粉丝</span><strong id="stat-current">—</strong><small id="stat-net">等待检查</small>
+              <span>粉丝总数<span id="stat-count-note" class="stat-count-note" hidden></span></span><strong id="stat-current">—</strong><small id="stat-net">等待检查</small>
             </article>
             <article class="stat-card removed">
-              <span>疑似取关</span><strong id="stat-removed">—</strong><small>完整名单或时间边界内消失</small>
+              <span>疑似取关</span><strong id="stat-removed">—</strong><small>在本次名单中消失</small>
             </article>
             <article class="stat-card added">
               <span>新增关注</span><strong id="stat-added">—</strong><small>本次新出现</small>
@@ -111,7 +107,18 @@
               <div class="empty-state">
                 <div class="empty-orbit" aria-hidden="true"><i></i></div>
                 <strong>结果会显示在这里</strong>
-                <p>建立两次完整快照或通过校验的时间边界快照后，就能看到可确认范围内的变化。</p>
+                <p>检查完成后会和上一次可用快照对比。没有旧快照时，先建立基线。</p>
+              </div>
+            </div>
+            <div id="result-tools" class="result-tools hidden">
+              <nav id="pagination" class="result-pagination" aria-label="结果翻页">
+                <button id="previous-page" type="button" class="history-open">上一页</button>
+                <span id="page-summary"></span>
+                <button id="next-page" type="button" class="history-open">下一页</button>
+              </nav>
+              <div id="lookup-controls" class="hidden">
+                <button id="lookup-button" type="button" class="history-open">补查状态</button>
+                <p id="lookup-message" class="field-help" role="status"></p>
               </div>
             </div>
           </article>
@@ -130,7 +137,7 @@
 
       <section class="safety-note">
         <strong>关于准确性</strong>
-        <p>“疑似取关”表示 UID 从完整名单中消失，或在超过1000粉时从严格位于关注时间边界内的范围消失；也可能由账号注销、封禁或平台关系清理造成。边界外的记录不会计入结论。</p>
+        <p>新版以扫码读取的通讯录名单为准，B 站显示的粉丝总数仅供参考。“疑似取关”也可能由账号注销、封禁或平台关系清理造成。每次检查都会用网页接口刷新最近最多 1000 人的关注时间和关系；范围外保留历史资料，缺失字段不显示。</p>
       </section>
     </main>
   </div>

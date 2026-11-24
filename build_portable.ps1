@@ -1,5 +1,6 @@
 param(
-    [string]$Version = "0.3.0"
+    [ValidatePattern('^\d+\.\d+\.\d+$')]
+    [string]$Version = "0.4.1"
 )
 
 $ErrorActionPreference = "Stop"
@@ -8,9 +9,23 @@ $windowsVenvPython = Join-Path $projectRoot ".venv-build\Scripts\python.exe"
 $msysVenvPython = Join-Path $projectRoot ".venv-build\bin\python.exe"
 
 Set-Location $projectRoot
+$buildDistRoot = Join-Path $projectRoot "dist\portable-$Version"
+$buildWorkRoot = Join-Path $projectRoot "build\portable-$Version"
+$env:PYINSTALLER_CONFIG_DIR = Join-Path $projectRoot "build\pyinstaller-cache"
+$portableFolder = Join-Path $buildDistRoot "BiliFollowerTracker"
+$releaseFolder = Join-Path $projectRoot "release"
+$archive = Join-Path $releaseFolder "BiliFollowerTracker-$Version-windows-x64.zip"
+$escapedVersion = [regex]::Escape($Version)
+if ((Get-Content -LiteralPath (Join-Path $projectRoot "portable-version.txt") -Raw) -notmatch "StringStruct\('FileVersion', '$escapedVersion'\)") {
+    throw "Version does not match portable-version.txt. Update the EXE metadata first."
+}
+if (Test-Path -LiteralPath $archive) {
+    throw "Release archive already exists; choose a new version or move the existing archive first: $archive"
+}
 
 if (-not (Test-Path -LiteralPath $windowsVenvPython) -and -not (Test-Path -LiteralPath $msysVenvPython)) {
     python -m venv (Join-Path $projectRoot ".venv-build")
+    if ($LASTEXITCODE -ne 0) { throw "Failed to create the build environment." }
 }
 
 $venvPython = if (Test-Path -LiteralPath $windowsVenvPython) {
@@ -19,15 +34,17 @@ $venvPython = if (Test-Path -LiteralPath $windowsVenvPython) {
     $msysVenvPython
 }
 
-& $venvPython -m pip install -r requirements.txt -r requirements-build.txt
-& $venvPython -m PyInstaller --noconfirm --clean BiliFollowerTracker.spec
-
-$portableFolder = Join-Path $projectRoot "dist\BiliFollowerTracker"
-$releaseFolder = Join-Path $projectRoot "release"
-$archive = Join-Path $releaseFolder "BiliFollowerTracker-$Version-windows-x64.zip"
+& $venvPython -m pip install --disable-pip-version-check -r requirements.txt -r requirements-build.txt
+if ($LASTEXITCODE -ne 0) { throw "Failed to install build dependencies." }
+& $venvPython -m PyInstaller --noconfirm --clean --distpath $buildDistRoot --workpath $buildWorkRoot BiliFollowerTracker.spec
+if ($LASTEXITCODE -ne 0) { throw "PyInstaller failed; release packaging was stopped." }
+if (Test-Path -LiteralPath (Join-Path $portableFolder ".local-data")) {
+    throw "The build folder contains user data. Refusing to package it."
+}
 
 New-Item -ItemType Directory -Force -Path $releaseFolder | Out-Null
 Copy-Item -LiteralPath (Join-Path $projectRoot "PORTABLE_README.txt") -Destination $portableFolder -Force
+Copy-Item -LiteralPath (Join-Path $projectRoot "LICENSE") -Destination $portableFolder -Force
 
 $licenseRoot = Join-Path $portableFolder "THIRD_PARTY_LICENSES"
 New-Item -ItemType Directory -Force -Path $licenseRoot | Out-Null
